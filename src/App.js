@@ -1,6 +1,7 @@
 // src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import "./styles/styles.css";
 
 // Pages
 import AdminLogin from "./pages/Login/AdminLogin";
@@ -11,6 +12,8 @@ import BundleBuilder from "./pages/Bundles/BundleBuilder";
 import CouponManager from "./pages/Coupons/CouponManager";
 import OrdersTable from "./pages/Orders/OrdersTable";
 import UserEntitlements from "./pages/Users/UserEntitlements";
+import PricingManager from "./pages/Pricing/PricingManager";
+import ReportsPage from "./pages/Reports/ReportsPage";
 
 function App() {
   const isAdmin = localStorage.getItem("isAdmin") === "true";
@@ -27,10 +30,12 @@ function App() {
             <Route path="/dashboard" element={<AdminDashboard />} />
             <Route path="/tracks" element={<TrackEditor />} />
             <Route path="/exams" element={<ExamBuilder />} />
+            <Route path="/pricing" element={<PricingManager />} />
             <Route path="/bundles" element={<BundleBuilder />} />
             <Route path="/coupons" element={<CouponManager />} />
-            <Route path="/orders" element={<OrdersTable />} />
             <Route path="/users" element={<UserEntitlements />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/orders" element={<OrdersTable />} />
           </>
         )}
 

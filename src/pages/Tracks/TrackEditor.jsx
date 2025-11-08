@@ -1,58 +1,314 @@
 import React, { useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import Table from "../../components/Table";
+import Modal from "../../components/Modal";
 
 const TrackEditor = () => {
   const [track, setTrack] = useState({
     title: "",
     description: "",
     level: "Beginner",
-    estimatedHours: "",
-    status: "draft"
+    coverImage: "",
+    status: "draft",
   });
 
-  const handleChange = e => {
+  const [modules, setModules] = useState([]);
+  const [slides, setSlides] = useState({}); // { moduleId: [slides] }
+  const [showModuleModal, setShowModuleModal] = useState(false);
+  const [showSlideModal, setShowSlideModal] = useState(false);
+  const [currentModuleId, setCurrentModuleId] = useState(null);
+  const [newModule, setNewModule] = useState({ title: "", order: 1, colorTag: "" });
+  const [newSlide, setNewSlide] = useState({ title: "", text: "", example: "" });
+
+  const handleTrackChange = (e) => {
     const { name, value } = e.target;
-    setTrack({...track, [name]: value});
+    setTrack({ ...track, [name]: value });
   };
 
-  const handleSave = () => {
-    console.log("Track saved:", track);
-    alert("Track saved (mock)!");
+  const handleSaveTrack = () => {
+    console.log("Track saved:", { track, modules, slides });
+    alert("Track saved successfully!");
   };
 
-  const columns = ["Module", "Order", "Color Tag"];
-  const data = [
-    { Module:"VPC Basics", Order:1, "Color Tag":"Networking" },
-    { Module:"Subnetting", Order:2, "Color Tag":"Networking" }
-  ];
+  const handleAddModule = () => {
+    const moduleId = Date.now();
+    const module = {
+      id: moduleId,
+      ...newModule,
+      order: modules.length + 1,
+    };
+    setModules([...modules, module]);
+    setSlides({ ...slides, [moduleId]: [] });
+    setNewModule({ title: "", order: 1, colorTag: "" });
+    setShowModuleModal(false);
+  };
+
+  const handleAddSlide = () => {
+    if (!currentModuleId) return;
+    const slide = {
+      id: Date.now(),
+      ...newSlide,
+    };
+    setSlides({
+      ...slides,
+      [currentModuleId]: [...(slides[currentModuleId] || []), slide],
+    });
+    setNewSlide({ title: "", text: "", example: "" });
+    setShowSlideModal(false);
+    setCurrentModuleId(null);
+  };
+
+  const handleDeleteModule = (moduleId) => {
+    if (window.confirm("Are you sure you want to delete this module?")) {
+      setModules(modules.filter((m) => m.id !== moduleId));
+      const newSlides = { ...slides };
+      delete newSlides[moduleId];
+      setSlides(newSlides);
+    }
+  };
+
+  const handleDeleteSlide = (moduleId, slideId) => {
+    if (window.confirm("Are you sure you want to delete this slide?")) {
+      setSlides({
+        ...slides,
+        [moduleId]: slides[moduleId].filter((s) => s.id !== slideId),
+      });
+    }
+  };
+
+  const openSlideModal = (moduleId) => {
+    setCurrentModuleId(moduleId);
+    setShowSlideModal(true);
+  };
 
   return (
-    <div style={{display:"flex"}}>
+    <div style={{ display: "flex" }}>
       <Sidebar />
-      <div style={{flex:1, padding:"2rem"}}>
+      <div style={{ flex: 1, padding: "2rem" }}>
         <h1>Create / Edit Track</h1>
-        <div style={{marginTop:"1rem", marginBottom:"2rem", display:"grid", gap:"1rem", maxWidth:"600px"}}>
-          <input type="text" name="title" placeholder="Title" value={track.title} onChange={handleChange} />
-          <textarea name="description" placeholder="Description" value={track.description} onChange={handleChange} />
-          <select name="level" value={track.level} onChange={handleChange}>
-            <option>Beginner</option>
-            <option>Intermediate</option>
-            <option>Advanced</option>
-          </select>
-          <input type="number" name="estimatedHours" placeholder="Estimated Hours" value={track.estimatedHours} onChange={handleChange} />
-          <select name="status" value={track.status} onChange={handleChange}>
-            <option>draft</option>
-            <option>published</option>
-          </select>
-          <button onClick={handleSave}>Save Track</button>
+
+        {/* Track Basic Info */}
+        <div className="custom-card" style={{ marginBottom: "2rem" }}>
+          <h2>Track Information</h2>
+          <div style={{ display: "grid", gap: "1rem", maxWidth: "600px" }}>
+            <div className="form-input">
+              <label>Title</label>
+              <input
+                type="text"
+                name="title"
+                placeholder="Track Title"
+                value={track.title}
+                onChange={handleTrackChange}
+              />
+            </div>
+            <div className="form-input">
+              <label>Description</label>
+              <textarea
+                name="description"
+                placeholder="Track Description"
+                value={track.description}
+                onChange={handleTrackChange}
+                rows="4"
+              />
+            </div>
+            <div className="form-input">
+              <label>Level</label>
+              <select name="level" value={track.level} onChange={handleTrackChange}>
+                <option>Beginner</option>
+                <option>Intermediate</option>
+                <option>Advanced</option>
+              </select>
+            </div>
+            <div className="form-input">
+              <label>Cover Image URL</label>
+              <input
+                type="text"
+                name="coverImage"
+                placeholder="https://example.com/image.jpg"
+                value={track.coverImage}
+                onChange={handleTrackChange}
+              />
+            </div>
+            <div className="form-input">
+              <label>Status</label>
+              <select name="status" value={track.status} onChange={handleTrackChange}>
+                <option>draft</option>
+                <option>published</option>
+              </select>
+            </div>
+            <button className="custom-btn" onClick={handleSaveTrack}>
+              Save Track
+            </button>
+          </div>
         </div>
 
-        <h2>Modules</h2>
-        <Table columns={columns} data={data} />
+        {/* Modules Section */}
+        <div className="custom-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <h2>Modules</h2>
+            <button className="custom-btn" onClick={() => setShowModuleModal(true)}>
+              ➕ Add Module
+            </button>
+          </div>
+
+          {modules.length === 0 ? (
+            <p style={{ color: "#666" }}>No modules added yet. Click "Add Module" to get started.</p>
+          ) : (
+            modules
+              .sort((a, b) => a.order - b.order)
+              .map((module) => (
+                <div key={module.id} style={{ marginBottom: "2rem", padding: "1rem", border: "1px solid #ddd", borderRadius: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                    <div>
+                      <h3>{module.title}</h3>
+                      <p style={{ color: "#666", fontSize: "0.9rem" }}>
+                        Order: {module.order} | Color Tag: {module.colorTag || "None"}
+                      </p>
+                    </div>
+                    <div>
+                      <button
+                        className="edit-btn"
+                        onClick={() => openSlideModal(module.id)}
+                        style={{ marginRight: "0.5rem" }}
+                      >
+                        ➕ Add Slide
+                      </button>
+                      <button className="delete-btn" onClick={() => handleDeleteModule(module.id)}>
+                        🗑️ Delete Module
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Slides for this module */}
+                  {slides[module.id] && slides[module.id].length > 0 ? (
+                    <div>
+                      <h4>Slides ({slides[module.id].length})</h4>
+                      <Table
+                        headers={["Title", "Text Preview", "Example", "Actions"]}
+                        rows={slides[module.id].map((slide) => [
+                          slide.title,
+                          slide.text.substring(0, 50) + "...",
+                          slide.example.substring(0, 30) + "...",
+                          <>
+                            <button
+                              className="edit-btn"
+                              onClick={() => {
+                                setNewSlide(slide);
+                                setCurrentModuleId(module.id);
+                                setShowSlideModal(true);
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="delete-btn"
+                              onClick={() => handleDeleteSlide(module.id, slide.id)}
+                              style={{ marginLeft: "0.5rem" }}
+                            >
+                              Delete
+                            </button>
+                          </>,
+                        ])}
+                      />
+                    </div>
+                  ) : (
+                    <p style={{ color: "#999", fontStyle: "italic" }}>No slides in this module yet.</p>
+                  )}
+                </div>
+              ))
+          )}
+        </div>
+
+        {/* Add Module Modal */}
+        {showModuleModal && (
+          <Modal onClose={() => setShowModuleModal(false)}>
+            <div className="modal-header">
+              <h2>Add Module</h2>
+              <button className="modal-close" onClick={() => setShowModuleModal(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-input">
+                <label>Module Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g., VPC Basics"
+                  value={newModule.title}
+                  onChange={(e) => setNewModule({ ...newModule, title: e.target.value })}
+                />
+              </div>
+              <div className="form-input">
+                <label>Order</label>
+                <input
+                  type="number"
+                  placeholder="1"
+                  value={newModule.order}
+                  onChange={(e) => setNewModule({ ...newModule, order: parseInt(e.target.value) })}
+                />
+              </div>
+              <div className="form-input">
+                <label>Color Tag</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Networking"
+                  value={newModule.colorTag}
+                  onChange={(e) => setNewModule({ ...newModule, colorTag: e.target.value })}
+                />
+              </div>
+              <button className="custom-btn" onClick={handleAddModule}>
+                Add Module
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {/* Add Slide Modal */}
+        {showSlideModal && (
+          <Modal onClose={() => setShowSlideModal(false)}>
+            <div className="modal-header">
+              <h2>Add Slide</h2>
+              <button className="modal-close" onClick={() => setShowSlideModal(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-input">
+                <label>Slide Title</label>
+                <input
+                  type="text"
+                  placeholder="Slide Title"
+                  value={newSlide.title}
+                  onChange={(e) => setNewSlide({ ...newSlide, title: e.target.value })}
+                />
+              </div>
+              <div className="form-input">
+                <label>Text Content</label>
+                <textarea
+                  placeholder="Slide text content..."
+                  value={newSlide.text}
+                  onChange={(e) => setNewSlide({ ...newSlide, text: e.target.value })}
+                  rows="5"
+                />
+              </div>
+              <div className="form-input">
+                <label>Example</label>
+                <textarea
+                  placeholder="Code example or explanation..."
+                  value={newSlide.example}
+                  onChange={(e) => setNewSlide({ ...newSlide, example: e.target.value })}
+                  rows="4"
+                />
+              </div>
+              <button className="custom-btn" onClick={handleAddSlide}>
+                {newSlide.id ? "Update Slide" : "Add Slide"}
+              </button>
+            </div>
+          </Modal>
+        )}
       </div>
     </div>
-  )
+  );
 };
 
 export default TrackEditor;
