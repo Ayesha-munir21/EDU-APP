@@ -12,11 +12,11 @@ const AdminLogin = () => {
   const handleLogin = (e) => {
     e.preventDefault();
     if (email === "admin@gmail.com" && password === "admin123") {
-      localStorage.setItem("isAdmin", "true");
+      // localStorage.setItem("isAdmin", "true");
       success("Login successful! Redirecting to dashboard...");
       setTimeout(() => {
         navigate("/dashboard");
-      }, 1500);
+      }, 500);
     } else {
       error("Invalid email or password! Please try again.");
     }
