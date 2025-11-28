@@ -600,7 +600,7 @@ input:focus, select:focus, textarea:focus {
 
 .admin-login-title {
   color: #047857;
-  font-size: 4rem;
+  font-size: 2rem;
   font-weight: 800;
   margin: 0;
   line-height: 1.1;
@@ -948,4 +948,195 @@ input:focus, select:focus, textarea:focus {
     min-width: auto;
     max-width: none;
   }
+}
+
+.concept-container {
+  padding: 2rem;
+}
+
+.page-title {
+  color: #047857;
+  margin-bottom: 2rem;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+/* Grid layout */
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+/* Course Card */
+.course-card {
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.course-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.course-icon {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 1rem;
+}
+
+.course-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #047857;
+  margin-bottom: 0.5rem;
+}
+
+.course-desc {
+  font-size: 0.95rem;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.view-detail-btn {
+  background-color: #34d399;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.view-detail-btn:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .course-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* Settings.css */
+
+.settings-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: Arial, sans-serif;
+  color: #333;
+}
+
+.settings-container h1 {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #3eb489;
+}
+
+.section {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.section h2 {
+  margin-bottom: 0.5rem;
+  color: #3b3b3b;
+}
+
+.section p {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.add-admin-btn {
+  background-color: #3eb489;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  transition: background-color 0.3s;
+}
+
+.add-admin-btn:hover {
+  background-color: #35a17c;
+}
+
+.add-admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: #fff;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+}
+
+.add-admin-form input,
+.add-admin-form select {
+  padding: 0.6rem;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+.add-admin-form button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.add-admin-form button:first-of-type {
+  background-color: #3eb489;
+  color: white;
+  margin-right: 0.5rem;
+}
+
+.add-admin-form button:first-of-type:hover {
+  background-color: #35a17c;
+}
+
+.add-admin-form button:last-of-type {
+  background-color: #ccc;
+}
+
+.add-admin-form button:last-of-type:hover {
+  background-color: #b3b3b3;
+}
+
+.admin-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.admin-list li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.admin-list li span {
+  margin-right: 0.5rem;
 }

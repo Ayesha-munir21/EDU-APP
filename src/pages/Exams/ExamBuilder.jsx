@@ -2,9 +2,17 @@ import React, { useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import Table from "../../components/Table";
 import Modal from "../../components/Modal";
+import { useToast } from "../../hooks/useToast";
+import ToastContainer from "../../components/ToastContainer";
+
+const API_BASE_URL = "https://ceretification-app.onrender.com";
 
 const ExamBuilder = () => {
+  const { toasts, removeToast, success, error } = useToast();
+  const [loading, setLoading] = useState(false);
+
   const [exam, setExam] = useState({
+    trackId: "",
     title: "",
     description: "",
     duration: 60,
@@ -28,9 +36,65 @@ const ExamBuilder = () => {
     setExam({ ...exam, [name]: value });
   };
 
-  const handleSaveExam = () => {
-    console.log("Exam saved:", { exam, questions });
-    alert("Exam saved successfully!");
+  const handleSaveExam = async () => {
+    if (!exam.trackId) {
+        error("Please enter a Track ID");
+        return;
+    }
+    setLoading(true);
+    const token = localStorage.getItem("accessToken");
+
+    try {
+        const examPayload = {
+            title: exam.title,
+            passing_score: parseInt(exam.passingScore),
+            time_limit_minutes: parseInt(exam.duration),
+            question_count: questions.length,
+            metadata: { description: exam.description }
+        };
+
+        const res1 = await fetch(`${API_BASE_URL}/api/admin/tracks/${exam.trackId}/manual-exam`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(examPayload)
+        });
+
+        if (!res1.ok) throw new Error("Failed to create exam metadata. Check Track ID.");
+        const examData = await res1.json();
+        const examId = examData._id;
+
+        const questionsPayload = questions.map(q => ({
+            question: q.question,
+            options: q.options,
+            correct_answer: q.options[q.correctAnswer],
+            correctAnswers: [q.correctAnswer.toString()],
+            explanation: q.explanation
+        }));
+
+        const res2 = await fetch(`${API_BASE_URL}/api/admin/exams/${examId}/questions/bulk`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(questionsPayload)
+        });
+
+        if (!res2.ok) throw new Error("Failed to save questions.");
+
+        success(`Exam created with ${questions.length} questions!`);
+        setQuestions([]);
+        setExam({ ...exam, title: "", description: "" });
+
+    } catch (err) {
+        console.error(err);
+        error(err.message);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleAddQuestion = () => {
@@ -70,17 +134,19 @@ const ExamBuilder = () => {
     }
   };
 
+  // ✅ FIX: This function is now properly used in the JSX below
   const handleOptionChange = (index, value) => {
     const newOptions = [...newQuestion.options];
     newOptions[index] = value;
     setNewQuestion({ ...newQuestion, options: newOptions });
   };
 
+  // Preview Logic
+  const [previewAnswers, setPreviewAnswers] = useState({});
+  
   const handlePreview = () => {
     setShowPreview(true);
   };
-
-  const [previewAnswers, setPreviewAnswers] = useState({});
 
   const handlePreviewAnswer = (questionId, answerIndex) => {
     setPreviewAnswers({ ...previewAnswers, [questionId]: answerIndex });
@@ -99,6 +165,7 @@ const ExamBuilder = () => {
   return (
     <div style={{ display: "flex" }}>
       <Sidebar />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       <div style={{ flex: 1, padding: "2rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
           <h1>Exam Builder</h1>
@@ -106,8 +173,8 @@ const ExamBuilder = () => {
             <button className="custom-btn" onClick={handlePreview} style={{ marginRight: "0.5rem" }}>
               👁️ Preview Exam
             </button>
-            <button className="custom-btn" onClick={handleSaveExam}>
-              💾 Save Exam
+            <button className="custom-btn" onClick={handleSaveExam} disabled={loading}>
+              {loading ? "Saving..." : "💾 Save Exam"}
             </button>
           </div>
         </div>
@@ -116,6 +183,16 @@ const ExamBuilder = () => {
         <div className="custom-card" style={{ marginBottom: "2rem" }}>
           <h2>Exam Information</h2>
           <div style={{ display: "grid", gap: "1rem", maxWidth: "600px" }}>
+            <div className="form-input">
+              <label>Track ID (Required)</label>
+              <input
+                type="text"
+                name="trackId"
+                placeholder="e.g. AWS-CCP"
+                value={exam.trackId}
+                onChange={handleExamChange}
+              />
+            </div>
             <div className="form-input">
               <label>Exam Title</label>
               <input
@@ -139,27 +216,12 @@ const ExamBuilder = () => {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <div className="form-input">
                 <label>Duration (minutes)</label>
-                <input
-                  type="number"
-                  name="duration"
-                  placeholder="60"
-                  value={exam.duration}
-                  onChange={handleExamChange}
-                />
+                <input type="number" name="duration" value={exam.duration} onChange={handleExamChange} />
               </div>
               <div className="form-input">
                 <label>Passing Score (%)</label>
-                <input
-                  type="number"
-                  name="passingScore"
-                  placeholder="70"
-                  value={exam.passingScore}
-                  onChange={handleExamChange}
-                />
+                <input type="number" name="passingScore" value={exam.passingScore} onChange={handleExamChange} />
               </div>
-            </div>
-            <div className="form-input">
-              <label>Total Questions: {questions.length}</label>
             </div>
           </div>
         </div>
@@ -178,86 +240,54 @@ const ExamBuilder = () => {
           </div>
 
           {questions.length === 0 ? (
-            <p style={{ color: "#666" }}>No questions added yet. Click "Add Question" to get started.</p>
+             <p style={{ color: "#666" }}>No questions added yet.</p>
           ) : (
-            <Table
-              headers={["#", "Question", "Options", "Correct Answer", "Actions"]}
+             <Table
+              headers={["#", "Question", "Correct Answer", "Actions"]}
               rows={questions.map((q) => [
                 q.questionNumber,
                 q.question.substring(0, 50) + "...",
-                q.options.join(", ").substring(0, 60) + "...",
                 q.options[q.correctAnswer],
                 <>
-                  <button className="edit-btn" onClick={() => handleEditQuestion(q)}>
-                    Edit
-                  </button>
-                  <button
-                    className="delete-btn"
-                    onClick={() => handleDeleteQuestion(q.id)}
-                    style={{ marginLeft: "0.5rem" }}
-                  >
-                    Delete
-                  </button>
+                   <button className="edit-btn" onClick={() => handleEditQuestion(q)}>Edit</button>
+                   <button className="delete-btn" onClick={() => handleDeleteQuestion(q.id)} style={{marginLeft:'0.5rem'}}>Delete</button>
                 </>,
               ])}
             />
           )}
         </div>
 
-        {/* Add/Edit Question Modal */}
+        {/* Question Modal */}
         {showQuestionModal && (
           <Modal onClose={() => setShowQuestionModal(false)}>
-            <div className="modal-header">
-              <h2>{currentQuestion ? "Edit Question" : "Add Question"}</h2>
-              <button className="modal-close" onClick={() => setShowQuestionModal(false)}>
-                &times;
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="form-input">
-                <label>Question</label>
-                <textarea
-                  placeholder="Enter your question..."
-                  value={newQuestion.question}
-                  onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
-                  rows="3"
-                />
-              </div>
-              <div className="form-input">
-                <label>Options</label>
-                {newQuestion.options.map((option, index) => (
-                  <div key={index} style={{ marginBottom: "0.5rem" }}>
-                    <input
-                      type="text"
-                      placeholder={`Option ${index + 1}`}
-                      value={option}
-                      onChange={(e) => handleOptionChange(index, e.target.value)}
-                    />
-                    <label style={{ marginLeft: "0.5rem" }}>
-                      <input
-                        type="radio"
-                        name="correctAnswer"
-                        checked={newQuestion.correctAnswer === index}
-                        onChange={() => setNewQuestion({ ...newQuestion, correctAnswer: index })}
-                      />
-                      Correct
-                    </label>
-                  </div>
-                ))}
-              </div>
-              <div className="form-input">
-                <label>Explanation</label>
-                <textarea
-                  placeholder="Explanation for the correct answer..."
-                  value={newQuestion.explanation}
-                  onChange={(e) => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
-                  rows="3"
-                />
-              </div>
-              <button className="custom-btn" onClick={handleAddQuestion}>
-                {currentQuestion ? "Update Question" : "Add Question"}
-              </button>
-            </div>
+             <div className="modal-header"><h2>{currentQuestion ? "Edit" : "Add"} Question</h2><button onClick={()=>setShowQuestionModal(false)}>x</button></div>
+             <div className="modal-body">
+                <div className="form-input">
+                    <label>Question</label>
+                    <textarea value={newQuestion.question} onChange={(e)=>setNewQuestion({...newQuestion, question:e.target.value})} rows="3"/>
+                </div>
+                <div className="form-input">
+                    <label>Options (Select Correct)</label>
+                    {newQuestion.options.map((opt, i) => (
+                        <div key={i} style={{display:'flex', gap:'10px', marginBottom:'5px'}}>
+                            {/* ✅ FIX: Using the function here instead of inline logic */}
+                            <input 
+                                type="text" 
+                                value={opt} 
+                                onChange={(e) => handleOptionChange(i, e.target.value)} 
+                                placeholder={`Option ${i+1}`} 
+                                style={{flex:1}}
+                            />
+                            <label><input type="radio" name="correct" checked={newQuestion.correctAnswer === i} onChange={()=>setNewQuestion({...newQuestion, correctAnswer: i})} /> Correct</label>
+                        </div>
+                    ))}
+                </div>
+                <div className="form-input">
+                 <label>Explanation</label>
+                 <textarea value={newQuestion.explanation} onChange={(e)=>setNewQuestion({...newQuestion, explanation:e.target.value})} rows="2"/>
+               </div>
+                <button className="custom-btn" onClick={handleAddQuestion}>{currentQuestion ? "Update" : "Add"}</button>
+             </div>
           </Modal>
         )}
 
@@ -272,13 +302,12 @@ const ExamBuilder = () => {
             </div>
             <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
               {questions.length === 0 ? (
-                <p>No questions to preview. Add questions first.</p>
+                <p>No questions to preview.</p>
               ) : (
                 <>
                   <div style={{ marginBottom: "1rem", padding: "1rem", background: "#f0f8f1", borderRadius: "8px" }}>
                     <p><strong>Duration:</strong> {exam.duration} minutes</p>
                     <p><strong>Total Questions:</strong> {questions.length}</p>
-                    <p><strong>Passing Score:</strong> {exam.passingScore}%</p>
                   </div>
                   {questions.map((q, index) => (
                     <div key={q.id} style={{ marginBottom: "2rem", padding: "1rem", border: "1px solid #ddd", borderRadius: "8px" }}>
@@ -305,33 +334,15 @@ const ExamBuilder = () => {
                               style={{ marginRight: "0.5rem" }}
                             />
                             {option}
-                            {optIndex === q.correctAnswer && (
-                              <span style={{ marginLeft: "0.5rem", color: "#059669", fontWeight: "bold" }}>
-                                ✓ Correct
-                              </span>
-                            )}
                           </label>
                         ))}
                       </div>
-                      {q.explanation && (
-                        <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#fef3c7", borderRadius: "4px" }}>
-                          <strong>Explanation:</strong> {q.explanation}
-                        </div>
-                      )}
                     </div>
                   ))}
                   <div style={{ marginTop: "2rem", padding: "1rem", background: "#d9f0e6", borderRadius: "8px", textAlign: "center" }}>
                     <h3>Preview Score</h3>
                     <p>
-                      {calculatePreviewScore().correct} / {calculatePreviewScore().total} correct (
-                      {calculatePreviewScore().percentage}%)
-                    </p>
-                    <p>
-                      {calculatePreviewScore().percentage >= exam.passingScore ? (
-                        <span style={{ color: "#059669", fontWeight: "bold" }}>✓ Pass</span>
-                      ) : (
-                        <span style={{ color: "#dc2626", fontWeight: "bold" }}>✗ Fail</span>
-                      )}
+                      {calculatePreviewScore().correct} / {calculatePreviewScore().total} correct
                     </p>
                   </div>
                 </>

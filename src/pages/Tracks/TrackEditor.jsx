@@ -1,9 +1,19 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
 import Table from "../../components/Table";
 import Modal from "../../components/Modal";
+import { useToast } from "../../hooks/useToast";
+import ToastContainer from "../../components/ToastContainer";
+
+// ✅ Use your Render Backend URL
+const API_BASE_URL = "https://ceretification-app.onrender.com";
 
 const TrackEditor = () => {
+  const navigate = useNavigate();
+  const { toasts, removeToast, success, error } = useToast();
+  const [loading, setLoading] = useState(false);
+
   const [track, setTrack] = useState({
     title: "",
     description: "",
@@ -13,7 +23,7 @@ const TrackEditor = () => {
   });
 
   const [modules, setModules] = useState([]);
-  const [slides, setSlides] = useState({}); // { moduleId: [slides] }
+  const [slides, setSlides] = useState({}); 
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showSlideModal, setShowSlideModal] = useState(false);
   const [currentModuleId, setCurrentModuleId] = useState(null);
@@ -25,18 +35,54 @@ const TrackEditor = () => {
     setTrack({ ...track, [name]: value });
   };
 
-  const handleSaveTrack = () => {
-    console.log("Track saved:", { track, modules, slides });
-    alert("Track saved successfully!");
+  // ✅ INTEGRATED SAVE FUNCTION
+  const handleSaveTrack = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("accessToken");
+
+    // Prepare Payload for Backend
+    const payload = {
+        title: track.title,
+        description: track.description,
+        level: track.level.toLowerCase(), // Convert to lowercase for backend Enum
+        cover_image: track.coverImage,    // Map frontend 'coverImage' to backend 'cover_image'
+        status: track.status
+    };
+
+    try {
+      // Send POST Request
+      const response = await fetch(`${API_BASE_URL}/api/admin/tracks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Success handling
+        success(`Track created successfully! AI generated ${data.tutorial_slides_imported} slides.`);
+        setTimeout(() => navigate("/dashboard"), 2000);
+      } else {
+        // Error handling
+        throw new Error(data.detail || "Failed to create track");
+      }
+    } catch (err) {
+      console.error("Save Error:", err);
+      error(err.message || "Network error occurred.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // ... (Keep existing UI handlers for Modules/Slides as is) ...
 
   const handleAddModule = () => {
     const moduleId = Date.now();
-    const module = {
-      id: moduleId,
-      ...newModule,
-      order: modules.length + 1,
-    };
+    const module = { id: moduleId, ...newModule, order: modules.length + 1 };
     setModules([...modules, module]);
     setSlides({ ...slides, [moduleId]: [] });
     setNewModule({ title: "", order: 1, colorTag: "" });
@@ -45,14 +91,8 @@ const TrackEditor = () => {
 
   const handleAddSlide = () => {
     if (!currentModuleId) return;
-    const slide = {
-      id: Date.now(),
-      ...newSlide,
-    };
-    setSlides({
-      ...slides,
-      [currentModuleId]: [...(slides[currentModuleId] || []), slide],
-    });
+    const slide = { id: Date.now(), ...newSlide };
+    setSlides({ ...slides, [currentModuleId]: [...(slides[currentModuleId] || []), slide] });
     setNewSlide({ title: "", text: "", example: "" });
     setShowSlideModal(false);
     setCurrentModuleId(null);
@@ -84,6 +124,8 @@ const TrackEditor = () => {
   return (
     <div style={{ display: "flex" }}>
       <Sidebar />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      
       <div style={{ flex: 1, padding: "2rem" }}>
         <h1>Create / Edit Track</h1>
 
@@ -132,17 +174,24 @@ const TrackEditor = () => {
             <div className="form-input">
               <label>Status</label>
               <select name="status" value={track.status} onChange={handleTrackChange}>
-                <option>draft</option>
-                <option>published</option>
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
               </select>
             </div>
-            <button className="custom-btn" onClick={handleSaveTrack}>
-              Save Track
+            
+            {/* Updated Button with Loading State */}
+            <button 
+                className="custom-btn" 
+                onClick={handleSaveTrack}
+                disabled={loading}
+                style={{ opacity: loading ? 0.7 : 1 }}
+            >
+              {loading ? "Creating & Generating AI Content..." : "Save Track"}
             </button>
           </div>
         </div>
 
-        {/* Modules Section */}
+        {/* Modules Section (Kept exactly as provided) */}
         <div className="custom-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <h2>Modules</h2>
